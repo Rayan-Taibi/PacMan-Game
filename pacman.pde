@@ -1,8 +1,11 @@
 Game game;
 
 void setup() {
-  size(800, 800, P2D);
+  println("Starthoing setup...");
+  size(460, 440, P2D);
+  println("Size set");
   game = new Game();
+  println("Game created");
 }
 
 void draw() {
