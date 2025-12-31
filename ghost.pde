@@ -71,7 +71,8 @@ class Ghost {
     _moving = false;
     _speed = 2.0; // vitesse de deplacement
     _type = type;
-    _mode = GhostMode.SCATTER; // mode par defau
+    // Blinky commence en CHASE pour suivre directemant
+    _mode = (type == GhostType.BLINKY) ? GhostMode.CHASE : GhostMode.SCATTER;
     
     _scatterTimer = 0;
     _chaseTimer = 0;
@@ -126,7 +127,12 @@ class Ghost {
     
     // Tous les fantômes commencent en mode LEAVING_HOME pour sortir de la cage
     _mode = GhostMode.LEAVING_HOME;
-    _chaseTimer = 0;
+    // Blinky passe direct en CHASE apres avoir sorti de la cage
+    if (_type == GhostType.BLINKY) {
+      _chaseTimer = 999999; // timer tres long pour rester en chase
+    } else {
+      _chaseTimer = 0;
+    }
     _scatterTimer = 0;
     
     // Load sprite sheet if not already loaded
@@ -142,6 +148,9 @@ class Ghost {
   // cette methode calcul la cible du fantome selon son mode
   // chaque type de fantome a sa propre strategie
   void updateTarget(Hero hero, Board board) {
+    int heroX = hero.getCellX();
+    int heroY = hero.getCellY();
+    
     if (_mode == GhostMode.LEAVING_HOME) {
       // le fantome doi sortir de la cage d'abord
       // on vise une cellule au dessus pour sortir
@@ -152,15 +161,41 @@ class Ghost {
           board.getCellType(_cellY - 1, _cellX) != TypeCell.VOID &&
           board.getCellType(_cellY + 1, _cellX) != TypeCell.VOID) {
         _mode = GhostMode.CHASE;
-        _chaseTimer = 1200;
+        _chaseTimer = 999999;
       }
+      return; // pas besoin de continuer si en LEAVING_HOME
+    }
+    
+    if (_mode == GhostMode.FRIGHTENED) {
+      // fuit aleatoirment
+      if (_behaviorChangeTimer <= 0) {
+        _targetCell = new PVector(
+          int(random(board._nbCellsX)),
+          int(random(board._nbCellsY))
+        );
+        _behaviorChangeTimer = 60;
+      }
+      return;
+    }
+    
+    if (_mode == GhostMode.EATEN) {
+      // retourne au spawn
+      _targetCell = new PVector(_spawnX, _spawnY);
+      return;
+    }
+    
+    // Comportements des fantomes (BLINKY ignore SCATTER/CHASE)
+    PVector heroDir = hero._direction;
+    
+    if (_type == GhostType.BLINKY) {
+      // Blinky suit TOUJOURS pacman peu importe le mode
+      _targetCell = new PVector(heroX, heroY);
     }
     else if (_mode == GhostMode.SCATTER) {
-      // en mode scatter chaque fantome va dans son coin
-      // c'est pour donner un repi au joueur
+      // en mode scatter chaque fantome va dans son coin (sauf Blinky qui suit toujours)
       switch(_type) {
         case BLINKY:
-          _targetCell = new PVector(board._nbCellsX - 2, 0);
+          // deja geré avant, ne rien faire
           break;
         case PINKY:
           _targetCell = new PVector(2, 0);
@@ -174,16 +209,11 @@ class Ghost {
       }
     } 
     else if (_mode == GhostMode.CHASE) {
-      int heroX = hero.getCellX();
-      int heroY = hero.getCellY();
-      PVector heroDir = hero._direction;
       
       switch(_type) {
-        case BLINKY: // Shadow - suit Pac-Man en permanence
-          // Blinky suit directement Pac-Man sans condition
-          _targetCell = new PVector(heroX, heroY);
+        case BLINKY:
+          // deja geré avant, ne rien faire
           break;
-          
         case PINKY: // Speedy - vise l'endroit où se dirige Pac-Man
           int ahead = 4;
           // Pinky vise 4 cases devant Pac-Man dans sa direction actuelle
@@ -209,27 +239,20 @@ class Ghost {
           }
           break;
           
-        case CLYDE: // Pokey - de temps en temps, change de direction aléatoirement
+        case CLYDE: // Pokey - de temps en temps, change de direction
           if (_behaviorChangeTimer <= 0) {
-            // 45% de chance de choisir une direction aléatoire
-            if (random(1) < 0.45) {
-              // Choisit une cible aléatoire sur le plateau
+            // 40% de chance de changer de direction aleatoirement
+            if (random(1) < 0.40) {
+              // Choisit une cible aleatoire sur le plateau
               _targetCell = new PVector(
                 int(random(2, board._nbCellsX - 2)),
                 int(random(2, board._nbCellsY - 2))
               );
             } else {
-              // Sinon, suit Pac-Man mais avec un comportement timide
-              float dist = dist(heroX, heroY, _cellX, _cellY);
-              if (dist > 8) {
-                // Loin de Pac-Man, le poursuit
-                _targetCell = new PVector(heroX, heroY);
-              } else {
-                // Trop proche, recule vers son coin
-                _targetCell = new PVector(2, board._nbCellsY - 2);
-              }
+              // Sinon, suit Pac-Man
+              _targetCell = new PVector(heroX, heroY);
             }
-            _behaviorChangeTimer = 150; // Change toutes les ~2.5 secondes
+            _behaviorChangeTimer = 120; // Change de comportemant toute les 2 secondes
           }
           break;
       }
@@ -266,35 +289,56 @@ class Ghost {
     };
     
     float minDist = Float.MAX_VALUE;
-    PVector bestDir = _direction.copy();
+    PVector bestDir = new PVector(0, 0); // direction par defaut
+    boolean foundValidDir = false;
     
     for (PVector dir : possibleDirections) {
-      // Don't go backwards
-      if (dir.x == -_direction.x && dir.y == -_direction.y && _moving) {
-        continue;
+      // Seul Blinky peut revenir en arriere en permanance
+      // Les autres seulement en mode EATEN ou LEAVING_HOME
+      boolean canGoBackwards = (_type == GhostType.BLINKY) || (_mode == GhostMode.EATEN) || (_mode == GhostMode.LEAVING_HOME);
+      
+      if (!canGoBackwards && _moving) {
+        // Don't go backwards
+        if (dir.x == -_direction.x && dir.y == -_direction.y) {
+          continue;
+        }
       }
       
       int nextX = _cellX + int(dir.x);
       int nextY = _cellY + int(dir.y);
       
-      // En mode EATEN, les fantômes peuvent traverser les murs
-      boolean canMove = (_mode == GhostMode.EATEN) || !board.isWallForGhost(nextY, nextX);
+      // En mode EATEN ou LEAVING_HOME, les fantômes peuvent traverser les murs
+      boolean canMove = (_mode == GhostMode.EATEN || _mode == GhostMode.LEAVING_HOME) || !board.isWallForGhost(nextY, nextX);
+      
+      // Empecher les fantomes de retourner dans la cage (VOID) sauf en mode EATEN
+      if (_mode != GhostMode.EATEN && _mode != GhostMode.LEAVING_HOME) {
+        if (board.getCellType(nextY, nextX) == TypeCell.VOID) {
+          canMove = false; // pas de retour dans la cage
+        }
+      }
       
       if (canMove) {
         float dist = dist(nextX, nextY, _targetCell.x, _targetCell.y);
         if (dist < minDist) {
           minDist = dist;
-          bestDir = dir;
+          bestDir = dir.copy();
+          foundValidDir = true;
         }
       }
+    }
+    
+    // Si aucune direction trouvée, garder la direction actuelle
+    if (!foundValidDir && _direction.mag() > 0) {
+      bestDir = _direction.copy();
     }
     
     return bestDir;
   }
   
   void move(Board board) {
-    // En mode EATEN, toujours bouger vers le spawn
-    if (_mode == GhostMode.EATEN) {
+    // En mode EATEN, LEAVING_HOME ou Blinky en CHASE, toujours recalculer la direction
+    if (_mode == GhostMode.EATEN || _mode == GhostMode.LEAVING_HOME || 
+        (_type == GhostType.BLINKY && _mode == GhostMode.CHASE)) {
       _direction = chooseDirection(board);
       if (_direction.mag() > 0) {
         _moving = true;
@@ -316,6 +360,8 @@ class Ghost {
         currentSpeed = _speed * 0.5; // 50% plus lent en mode frightened
       } else if (_mode == GhostMode.EATEN) {
         currentSpeed = _speed * 1.5; // Plus rapide pour retourner au spawn
+      } else if (_mode == GhostMode.LEAVING_HOME) {
+        currentSpeed = _speed * 0.8; // Un peu plus lent en sortant
       }
       
       _posOffset.add(PVector.mult(_direction, currentSpeed));
@@ -354,9 +400,12 @@ class Ghost {
         PVector center = board.getCellCenter(_cellY, _cellX);
         _position = center.copy();
         
-        // En mode EATEN, toujours continuer à bouger
-        if (_mode == GhostMode.EATEN) {
+        // En mode EATEN ou LEAVING_HOME, toujours continuer à bouger
+        if (_mode == GhostMode.EATEN || _mode == GhostMode.LEAVING_HOME) {
           _moving = false; // Recalculer la direction
+        } else if (_type == GhostType.BLINKY && _mode != GhostMode.LEAVING_HOME) {
+          // Blinky recalcule sa direction a chaque cellule pour bien suivre (sauf en sortant)
+          _moving = false;
         } else {
           // Check if we can continue moving
           if (!board.isWallForGhost(_cellY + int(_direction.y), _cellX + int(_direction.x))) {
@@ -414,7 +463,7 @@ class Ghost {
       _chaseTimer--;
       if (_chaseTimer <= 0) {
         _mode = GhostMode.SCATTER;
-        _scatterTimer = 200; // Scatter for ~3 seconds
+        _scatterTimer = 200; // Scatter for 3 seconds
       }
     }
     

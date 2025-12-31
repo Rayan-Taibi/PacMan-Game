@@ -583,7 +583,4 @@ class Game
     fill(150);
     text("Appuyez sur ECHAP pour retourner", width/2, boxY + boxHeight - 30);
   }
-  
-  
-  
 }
