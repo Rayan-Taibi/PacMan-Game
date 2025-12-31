@@ -26,7 +26,7 @@ class Board
     _nbCellsX = nbCellsX;
     _nbCellsY = nbCellsY;
     _cellSize = cellSize;
-    _cells = new TypeCell[_nbCellsX][_nbCellsY];
+    _cells = new TypeCell[_nbCellsY][_nbCellsX];
     _nbPointsTotal = 0;
     _nbPointsManges = 0;
     _bonusPosition = null;
@@ -35,8 +35,8 @@ class Board
     _departFantomes = new ArrayList<PVector>(); // par defaut
     
     // initialisation des cellules a vide
-    for (int i=0 ; i<_nbCellsX ; i++){
-      for (int j=0 ; j<_nbCellsY ; j++){
+    for (int i=0 ; i<_nbCellsY ; i++){
+      for (int j=0 ; j<_nbCellsX ; j++){
         _cells[i][j] = TypeCell.EMPTY;
       }
     }
@@ -49,7 +49,7 @@ class Board
     
     _nbCellsY = lignes.length - startLine;
     _nbCellsX = lignes[startLine].length();
-    _cells = new TypeCell[_nbCellsX][_nbCellsY]; 
+    _cells = new TypeCell[_nbCellsY][_nbCellsX]; 
 
     for (int i = 0  ; i < _nbCellsY ; i++){
       String  ligne = lignes [startLine + i ];
@@ -126,8 +126,8 @@ class Board
   //  methode pour afficher le bonus
   void afficherBonus(){
     ArrayList<PVector> videPositions = new ArrayList<PVector>();
-    for (int i=0 ; i<_nbCellsX ; i++){
-      for (int j=0 ; j<_nbCellsY ; j++){
+    for (int i=0 ; i<_nbCellsY ; i++){
+      for (int j=0 ; j<_nbCellsX ; j++){
         if(_cells[i][j] == TypeCell.EMPTY){
           videPositions.add(new PVector(j,i));
         }
@@ -154,8 +154,8 @@ class Board
   }
 
   void drawIt() {
-    for(int i=0 ; i<_nbCellsX ; i++){
-      for (int j=0 ; j<_nbCellsY ; j++){
+    for(int i=0 ; i<_nbCellsY ; i++){
+      for (int j=0 ; j<_nbCellsX ; j++){
         
         float x = _position.x + j * _cellSize;
         float y = _position.y + i * _cellSize;
