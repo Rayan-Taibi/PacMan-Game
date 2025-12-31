@@ -105,7 +105,7 @@ class Board
     return _cells[i][j];
   }
 
-
+  // methode pour manger un point
   void mangerPoint(int i , int j){
     if(i >=0 && i < _nbCellsX && j >=0 && j <_nbCellsY){
       if(_cells[i][j] == TypeCell.DOT || _cells[i][j] == TypeCell.SUPER_DOT){
@@ -114,7 +114,7 @@ class Board
       }
     }
   }
-  
+  // methode pour manger le bonus
   void mangerBonus(int i, int j){
     if(i >=0 && i < _nbCellsX && j >=0 && j <_nbCellsY){
       if(_cells[i][j] == TypeCell.BONUS){
@@ -123,7 +123,7 @@ class Board
       }
     }
   }
-
+  //  methode pour afficher le bonus
   void afficherBonus(){
     ArrayList<PVector> videPositions = new ArrayList<PVector>();
     for (int i=0 ; i<_nbCellsX ; i++){
