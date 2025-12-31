@@ -1,9 +1,9 @@
 Game game;
 
 void setup() {
-  println("Starthoing setup...");
+  
   size(460, 440, P2D);
-  println("Size set");
+  
   game = new Game();
   
 }
