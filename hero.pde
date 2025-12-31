@@ -155,6 +155,8 @@ class Hero {
     popMatrix();
 
   }
+
+  // getters pour la position sur le board
   int getCellX() {
     return _cellX;
   }
