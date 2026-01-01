@@ -69,7 +69,7 @@ class Ghost {
     _direction = new PVector(0, 0);
     _targetCell = new PVector(0, 0);
     _moving = false;
-    _speed = 2.0; // vitesse de deplacement
+    _speed = 1.8; // vitesse un peu moins rapide que pacman (2.0)
     _type = type;
     // Blinky commence en CHASE pour suivre directemant
     _mode = (type == GhostType.BLINKY) ? GhostMode.CHASE : GhostMode.SCATTER;
