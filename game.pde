@@ -1,5 +1,16 @@
 enum GameState {
-  MENU, PLAYING, PAUSED, GAME_OVER, WON, HIGHSCORES
+  MENU, PLAYING, PAUSED, GAME_OVER, WON, HIGHSCORES, ENTER_NAME
+}
+
+// Classe pour stocker un score avec le nom du joueur
+class HighScore {
+  String playerName;
+  int score;
+  
+  HighScore(String name, int scoreValue) {
+    playerName = name;
+    score = scoreValue;
+  }
 }
 
 class Game 
@@ -19,7 +30,8 @@ class Game
   int _lastLifeBonusScore; // Dernier score où une vie bonus a été donnée
   int _bonusTimer; // Timer pour l'apparition des bonus
   
-  ArrayList<Integer> _highScores;
+  ArrayList<HighScore> _highScores;
+  String _playerName; // nom du joueur en cours de saisie
   
   Game() {
     _board = null;
@@ -34,7 +46,8 @@ class Game
     _ghostsEatenInSequence = 0;
     _lastLifeBonusScore = 0;
     _bonusTimer = 0;
-    _highScores = new ArrayList<Integer>();
+    _highScores = new ArrayList<HighScore>();
+    _playerName = "";
     
     loadHighScores();
     
@@ -113,8 +126,13 @@ class Game
                 // Pacman loses a life
                 _lives--;
                 if (_lives <= 0) {
-                  _state = GameState.GAME_OVER;
-                  saveHighScores(); // Save score when game over
+                  // Verifier si le score fait partie du top 5
+                  if (isTop5Score(_score)) {
+                    _state = GameState.ENTER_NAME;
+                    _playerName = "";
+                  } else {
+                    _state = GameState.GAME_OVER;
+                  }
                 } else {
                   // Reset positions
                   _hero.initialisation(int(_board._departPacman.x), int(_board._departPacman.y), _board);
@@ -195,8 +213,13 @@ class Game
         
         // Check if all dots are eaten
         if (_board.tousPointsManges()) {
-          _state = GameState.WON;
-          saveHighScores(); // Save score when won
+          // Verifier si le score fait partie du top 5
+          if (isTop5Score(_score)) {
+            _state = GameState.ENTER_NAME;
+            _playerName = "";
+          } else {
+            _state = GameState.WON;
+          }
         }
       }
     }
@@ -271,6 +294,10 @@ class Game
           drawHighScoresScreen();
           break;
           
+        case ENTER_NAME:
+          drawEnterNameScreen();
+          break;
+          
         case GAME_OVER:
           if (_menu != null) {
             _menu.drawGameOver(_score, false);
@@ -338,6 +365,21 @@ class Game
       if (keyCode == ESC || k == 'b' || k == 'B') {
         key = 0;
         _state = GameState.PAUSED;
+      }
+    }
+    else if (_state == GameState.ENTER_NAME) {
+      // Saisie du nom du joueur
+      if (keyCode == BACKSPACE && _playerName.length() > 0) {
+        _playerName = _playerName.substring(0, _playerName.length() - 1);
+      } else if (keyCode == ENTER || keyCode == RETURN) {
+        if (_playerName.length() > 0) {
+          // Sauvegarder le score avec le nom
+          saveHighScores();
+          _state = GameState.HIGHSCORES; // Afficher les scores
+        }
+      } else if (k >= 32 && k <= 126 && _playerName.length() < 15) {
+        // Ajouter le caractere (lettres, chiffres, symboles)
+        _playerName += (char)k;
       }
     }
     else if (_state == GameState.GAME_OVER || _state == GameState.WON) {
@@ -502,34 +544,51 @@ class Game
       String[] lines = loadStrings("data/highscores.txt");
       if (lines != null) {
         for (String line : lines) {
-          _highScores.add(int(line));
+          // Format: "NOM:SCORE"
+          String[] parts = split(line, ':');
+          if (parts.length == 2) {
+            _highScores.add(new HighScore(parts[0], int(parts[1])));
+          }
         }
       }
     } catch (Exception e) {
       println("Pas de fichier de scores trouvé, création d'une nouvelle liste.");
-      _highScores = new ArrayList<Integer>();
+      _highScores = new ArrayList<HighScore>();
     }
+  }
+  
+  // Verifie si le score fait parti du top 5
+  boolean isTop5Score(int score) {
+    if (_highScores.size() < 5) {
+      return true; // moins de 5 scores, donc automatiquement top 5
+    }
+    // Trier temporairement pour trouver le 5eme
+    ArrayList<HighScore> temp = new ArrayList<HighScore>(_highScores);
+    temp.sort((a, b) -> b.score - a.score);
+    return score > temp.get(4).score;
   }
   
   void saveHighScores() {
     try {
-      // Add current score
-      _highScores.add(_score);
+      // Add current score with player name
+      _highScores.add(new HighScore(_playerName, _score));
       
       // Sort in descending order
-      _highScores.sort((a, b) -> b - a);
+      _highScores.sort((a, b) -> b.score - a.score);
       
-      // Keep only top 10
-      while (_highScores.size() > 10) {
+      // Keep only top 5
+      while (_highScores.size() > 5) {
         _highScores.remove(_highScores.size() - 1);
       }
       
       // Save to file
       String[] lines = new String[_highScores.size()];
       for (int i = 0; i < _highScores.size(); i++) {
-        lines[i] = str(_highScores.get(i));
+        lines[i] = _highScores.get(i).playerName + ":" + _highScores.get(i).score;
       }
       saveStrings("data/highscores.txt", lines);
+      
+      println("Score sauvegardé : " + _playerName + " - " + _score);
       
     } catch (Exception e) {
       println("Erreur lors de la sauvegarde des scores : " + e.getMessage());
@@ -544,7 +603,7 @@ class Game
     rect(0, 0, width, height);
     
     // Box
-    float boxWidth = 400;
+    float boxWidth = 500;
     float boxHeight = 450;
     float boxX = (width - boxWidth) / 2;
     float boxY = (height - boxHeight) / 2;
@@ -559,7 +618,7 @@ class Game
     textAlign(CENTER, CENTER);
     fill(255, 255, 0);
     textSize(36);
-    text("MEILLEURS SCORES", width/2, boxY + 40);
+    text("TOP 5 SCORES", width/2, boxY + 40);
     
     // Scores
     textSize(24);
@@ -572,15 +631,86 @@ class Game
       for (int i = 0; i < _highScores.size(); i++) {
         fill(255);
         String rank = (i + 1) + ".";
-        text(rank, width/2 - 100, startY + i * 35);
+        textAlign(RIGHT, CENTER);
+        text(rank, width/2 - 150, startY + i * 40);
+        
+        textAlign(LEFT, CENTER);
+        fill(255, 200, 100);
+        text(_highScores.get(i).playerName, width/2 - 130, startY + i * 40);
+        
+        textAlign(RIGHT, CENTER);
         fill(255, 255, 0);
-        text(_highScores.get(i), width/2 + 50, startY + i * 35);
+        text(_highScores.get(i).score, width/2 + 150, startY + i * 40);
       }
     }
     
     // Instructions
     textSize(16);
+    textAlign(CENTER, CENTER);
     fill(150);
     text("Appuyez sur ECHAP pour retourner", width/2, boxY + boxHeight - 30);
+  }
+  
+  void drawEnterNameScreen() {
+    background(0);
+    
+    // Semi-transparent overlay
+    fill(0, 200);
+    rect(0, 0, width, height);
+    
+    // Box
+    float boxWidth = 500;
+    float boxHeight = 300;
+    float boxX = (width - boxWidth) / 2;
+    float boxY = (height - boxHeight) / 2;
+    
+    fill(20, 20, 60);
+    stroke(255, 255, 0);
+    strokeWeight(3);
+    rect(boxX, boxY, boxWidth, boxHeight, 10);
+    
+    // Title
+    noStroke();
+    textAlign(CENTER, CENTER);
+    fill(255, 255, 0);
+    textSize(32);
+    text("NOUVEAU RECORD !", width/2, boxY + 40);
+    
+    // Score
+    textSize(24);
+    fill(255);
+    text("Score : " + _score, width/2, boxY + 90);
+    
+    // Prompt
+    textSize(20);
+    fill(200);
+    text("Entrez votre nom :", width/2, boxY + 130);
+    
+    // Name input box
+    float inputWidth = 300;
+    float inputHeight = 40;
+    float inputX = (width - inputWidth) / 2;
+    float inputY = boxY + 160;
+    
+    fill(40, 40, 80);
+    stroke(255, 255, 0);
+    strokeWeight(2);
+    rect(inputX, inputY, inputWidth, inputHeight, 5);
+    
+    // Display player name
+    noStroke();
+    fill(255, 255, 0);
+    textSize(24);
+    textAlign(CENTER, CENTER);
+    String displayName = _playerName;
+    if (frameCount % 60 < 30) {
+      displayName += "_"; // clignotement du curseur
+    }
+    text(displayName, width/2, inputY + inputHeight/2);
+    
+    // Instructions
+    textSize(16);
+    fill(150);
+    text("Appuyez sur ENTREE pour valider", width/2, boxY + boxHeight - 30);
   }
 }
