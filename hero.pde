@@ -1,28 +1,29 @@
 class Hero {
-  // position on screen
+  // position sur l'ecran
   PVector _position;
   PVector _posOffset;
-  // position on board
+  // position sur le board
   int _cellX, _cellY;
-  // display size
-  float _size;
+  float _size;  // taille de l'ecran
+
   
-  // move data
+  // info pour le deplacement
   PVector _direction;
-  boolean _moving; // is moving ? 
-  PVector _nextDirection; // la prochaine direction choisie
+  boolean _moving; 
+  PVector _nextDirection; 
   float _vitesse;
   
-  float _angleBouche;
+  float _angleBouche; // pour l'anim de la bouche
   float _vitesseBouche;
-  boolean _mouthOpen;
+  boolean _mouthOpen; // bouche ouverte ou non
 
+  // constructeur
   Hero() {
     _position = new PVector(0,0);
-    _posOffset = new PVector(0,0); // _posOffset sert a gerer le decalage lors des deplacements
+    _posOffset = new PVector(0,0); // sert a gérer le decalage lors du mouvement
     _cellX = 0;
     _cellY = 0;
-    _size = CELL_SIZE * 0.8; // taille du hero par rapport a la taille de la cellule(80%)
+    _size = CELL_SIZE * 0.8; // 80% de la taille d'une cellule
     _direction = new PVector(0,0);
     _nextDirection = new PVector(0,0);
     _moving = false;
@@ -32,30 +33,32 @@ class Hero {
     _vitesseBouche = 0.2;
     _mouthOpen = true;
   }
-  // initialisation du hero  a la position cellX, cellY sur le board et au centre de la cellule
+
+  // mettre le hero a une position initiale sur le board
   void initialisation(int cellX, int cellY , Board board) {
     _cellX = cellX;
     _cellY = cellY;
     PVector center = board.getCellCenter(_cellY, _cellX); 
-    _position = center.copy(); // cette mthode permet de copier la valeur de center dans _position
+    _position = center.copy(); // copie le centre dans _position
     _posOffset = new PVector(0,0);
     _direction = new PVector(0,0);
     _nextDirection = new PVector(0,0);
     _moving = false;
   }
   
-  // lancer un deplacement dans la direction dir
+  // lancer un deplacement dans une direction
   void launchMove(PVector dir) {
-    _nextDirection = dir.copy();   // on copue la direction dans nextDirection
-
+    _nextDirection = dir.copy();   // copie la direction
   }
-  // on verifie si le hero peut se deplacer dans la direction dir
+
+  // verifie si le hero peut bouger dans une direction
   boolean canMove(Board board, PVector dir) {
     int nextX = _cellX + int(dir.x); 
     int nextY = _cellY + int(dir.y);
-    return !board.estMur(nextY, nextX);
+    return !board.estMur(nextY, nextX); // retourne vrai si pas de mur
   }
   
+  // deplacement du hero
   void move(Board board) {
     if(!_moving){
       if(_nextDirection.mag() != 0 && canMove(board, _nextDirection)){
@@ -65,12 +68,13 @@ class Hero {
     }
     if(_moving){
       _posOffset.add(PVector.mult(_direction, _vitesse));
-      // verifier si on deplacer vers la prochaine cellule
+      // voir si on a atteint la prochaine cellule
       if(_posOffset.mag() >= CELL_SIZE){
-        // on est arrive a la prochaine cellule
+        // update de la cellule courante
         _cellX += int(_direction.x);
         _cellY += int(_direction.y);
         
+        // teleportation si sortie du board horizontal
         if(_cellX < 0){
           _cellX = board._nbCellsX -1;
           _position = board.getCellCenter(_cellY, _cellX).copy();
@@ -80,6 +84,7 @@ class Hero {
           _position = board.getCellCenter(_cellY, _cellX).copy();
           _posOffset.set(0,0);
         }
+        // pareil pour vertical
         if(_cellY < 0){
           _cellY = board._nbCellsY -1;
           _position = board.getCellCenter(_cellY, _cellX).copy();
@@ -91,6 +96,7 @@ class Hero {
         }
         _posOffset.set(0,0);
 
+        // recalcule position precise
         PVector center = board.getCellCenter(_cellY, _cellX);
         _position = center.copy();
 
@@ -101,6 +107,7 @@ class Hero {
           _direction.set(0,0);
         }
        
+        // si on veut changer de direction apres
         if(_nextDirection.mag() !=0 && ! _nextDirection.equals(_direction)){
           if(canMove(board,_nextDirection)){
             _direction = _nextDirection.copy();
@@ -110,6 +117,8 @@ class Hero {
       }
     }
   }
+
+  // update du hero chaque frame
   void update(Board board) {
     move(board);
     // animation de la bouche
@@ -128,10 +137,10 @@ class Hero {
       }
     }else{
       _angleBouche = 0;
-      }
     }
+  }
 
-
+  // draw le hero on the screen
   void drawIt() {
     pushMatrix();
     float drawX = _position.x + _posOffset.x;
@@ -141,22 +150,19 @@ class Hero {
     float angle = 0;
     if(_direction.x > 0) angle = 0;         // droite
     else if(_direction.x < 0) angle = PI;   // gauche
-    else if(_direction.y > 0) angle = HALF_PI; // bas
-    else if(_direction.y < 0) angle = -HALF_PI; // haut
+    else if(_direction.y > 0) angle = HALF_PI; // up
+    else if(_direction.y < 0) angle = -HALF_PI; // down
     rotate(angle);
 
-    // dessiner le hero 
-
+    // draw the hero
     fill(255, 255, 0); // jaune
     noStroke();
-
     arc(0, 0, _size, _size, _angleBouche, TWO_PI - _angleBouche, PIE);
 
     popMatrix();
-
   }
 
-  // getters pour la position sur le board
+  // getter pour la position sur le board
   int getCellX() {
     return _cellX;
   }

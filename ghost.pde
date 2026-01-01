@@ -1,12 +1,12 @@
-// Les differant types de fantomes dans le jeu
-// chaque fantome a un comportemant different
-enum GhostType {
-  BLINKY,  // Shadow (red) - follows Pac-Man permanently
-  PINKY,   // Speedy (pink) - aims where Pac-Man is heading
-  INKY,    // Bashful (blue) - sometimes goes opposite direction
-  CLYDE    // Pokey (orange) - sometimes changes direction randomly
-}
+// Les differants type de fontomes dans le jeu
+// chaque fantome a son comportement
 
+enum GhostType {
+  BLINKY,  // Shadow (red) - suivre Pac-Man permanently
+  PINKY,   // Speedy (pink) - goes where Pac-Man is going
+  INKY,    // Bashful (blue) - sometimes goes opposite direction
+  CLYDE    // Pokey (orange) - goes randomly
+}
 // les mode de comportemant des fantomes
 enum GhostMode {
   LEAVING_HOME, // il sort de la maison
@@ -16,26 +16,23 @@ enum GhostMode {
   EATEN     // retourne au spawn quand il est mangé
 }
 
-// Global sprite sheet for ghosts (loaded once)
-PImage ghostSpriteSheet = null;
-
 class Ghost {
   // Position on screen
   PVector _position;
   PVector _posOffset;
   
-  // Position on board
+  // Position sur le plateau
   int _cellX, _cellY;
   
-  // Spawn position
+  // position de spawn
   int _spawnX, _spawnY;
   
-  // Display size
+  // Taille
   float _size;
   
   // Move data
   PVector _direction;
-  PVector _targetCell; // target cell for AI
+  PVector _targetCell; 
   boolean _moving;
   float _speed;
   
@@ -83,7 +80,6 @@ class Ghost {
     _animTimer = 0;
     
     // configuration des couleurs et nom selon le type
-    // chacun a sa propre couleur pour les reconnaitre
     switch(type) {
       case BLINKY: // le fantome rouge, il est aggressif
         _color = color(255, 0, 0);
@@ -135,14 +131,7 @@ class Ghost {
     }
     _scatterTimer = 0;
     
-    // Load sprite sheet if not already loaded
-    if (ghostSpriteSheet == null) {
-      try {
-        ghostSpriteSheet = loadImage("data/img/pacman_sprites.png");
-      } catch (Exception e) {
-        println("Warning: Could not load ghost sprites");
-      }
-    }
+   
   }
   
   // cette methode calcul la cible du fantome selon son mode
@@ -372,7 +361,7 @@ class Ghost {
         _cellX += int(_direction.x);
         _cellY += int(_direction.y);
         
-        // Téléportation aux bords du labyrinthe
+        // Téléportation aux bords du map
         if (_cellX < 0) {
           _cellX = board._nbCellsX - 1;
           _position = board.getCellCenter(_cellY, _cellX).copy();
@@ -404,7 +393,7 @@ class Ghost {
         if (_mode == GhostMode.EATEN || _mode == GhostMode.LEAVING_HOME) {
           _moving = false; // Recalculer la direction
         } else if (_type == GhostType.BLINKY && _mode != GhostMode.LEAVING_HOME) {
-          // Blinky recalcule sa direction a chaque cellule pour bien suivre (sauf en sortant)
+          // Blinky recalcule sa direction a chaque cellule pour bien suivre
           _moving = false;
         } else {
           // Check if we can continue moving

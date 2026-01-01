@@ -2,7 +2,7 @@ enum GameState {
   MENU, PLAYING, PAUSED, GAME_OVER, WON, HIGHSCORES, ENTER_NAME
 }
 
-// Classe pour stocker un score avec le nom du joueur
+// Classe pour stocker un scor avec le nom du joueur
 class HighScore {
   String playerName;
   int score;
